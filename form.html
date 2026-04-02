@@ -420,47 +420,20 @@ async function checkContent(message) {
   return JSON.parse(clean);
 }
 
-async function handleSubmit() {
+function handleSubmit() {
   if (!validate()) return;
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.classList.add('is-loading');
-  showBanner('checking', '⏳ 内容を確認しています...');
 
-  const message = document.getElementById('message').value.trim();
-
-  try {
-    const result = await checkContent(message);
-
-    if (!result.ok) {
-      showBanner('ng', `⚠️ この内容はお受けできません。（${result.reason || '利用規約違反の可能性があります'}）`);
-      btn.disabled = false;
-      btn.classList.remove('is-loading');
-      return;
-    }
-
-    hideBanner();
-
-    await new Promise(r => setTimeout(r, 600));
-
-    // ランダム合言葉生成（カタカナ4文字）
+  setTimeout(() => {
     const kana = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ';
     const code = Array.from({length: 4}, () => kana[Math.floor(Math.random() * kana.length)]).join('');
     document.getElementById('secret-code').textContent = code;
-
     document.getElementById('form-wrap').style.display = 'none';
     document.getElementById('success').style.display = 'block';
-
-  } catch (e) {
-    // API失敗時はフィルターなしで通す（フォールバック）
-    hideBanner();
-    const kana2 = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ';
-    const code2 = Array.from({length: 4}, () => kana2[Math.floor(Math.random() * kana2.length)]).join('');
-    document.getElementById('secret-code').textContent = code2;
-    document.getElementById('form-wrap').style.display = 'none';
-    document.getElementById('success').style.display = 'block';
-  }
+  }, 600);
 }
 </script>
 </body>
