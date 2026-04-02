@@ -319,7 +319,6 @@
       </div>
 
 
-      <div id="filter-banner" style="display:none"></div>
 
       <button class="btn" id="submit-btn" onclick="handleSubmit()">
         <span class="label">叫んでもらう</span>
@@ -456,6 +455,9 @@ async function handleSubmit() {
   } catch (e) {
     // API失敗時はフィルターなしで通す（フォールバック）
     hideBanner();
+    const kana2 = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ';
+    const code2 = Array.from({length: 4}, () => kana2[Math.floor(Math.random() * kana2.length)]).join('');
+    document.getElementById('secret-code').textContent = code2;
     document.getElementById('form-wrap').style.display = 'none';
     document.getElementById('success').style.display = 'block';
   }
