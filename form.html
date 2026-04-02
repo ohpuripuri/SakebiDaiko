@@ -427,9 +427,19 @@ function handleSubmit() {
   btn.disabled = true;
   btn.classList.add('is-loading');
 
+  const kana = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ';
+  const code = Array.from({length: 4}, () => kana[Math.floor(Math.random() * kana.length)]).join('');
+
+  fetch('https://formspree.io/f/mgoplvnj', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      叫んでほしい内容: message,
+      合言葉: code
+    })
+  });
+
   setTimeout(() => {
-    const kana = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ';
-    const code = Array.from({length: 4}, () => kana[Math.floor(Math.random() * kana.length)]).join('');
     document.getElementById('secret-code').textContent = code;
     document.getElementById('form-wrap').style.display = 'none';
     document.getElementById('success').style.display = 'block';
