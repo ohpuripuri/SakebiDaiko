@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>叫び代行 — 聴く</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Antique+Soft&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222222;
+    --accent: #ff3c00;
+    --accent2: #ff7a00;
+    --text: #f0ede8;
+    --muted: #666;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* ノイズ背景 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+  }
+
+  /* ロゴ */
+  .logo {
+    font-family: 'Zen Antique Soft', serif;
+    font-size: 22px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    margin-bottom: 40px;
+    letter-spacing: 0.05em;
+  }
+
+  /* カード共通 */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 40px;
+    position: relative;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  /* === 合言葉入力画面 === */
+  #auth-screen h2 {
+    font-family: 'Zen Antique Soft', serif;
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  #auth-screen .sub {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 32px;
+    letter-spacing: 0.05em;
+  }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: 'Zen Antique Soft', serif;
+    font-size: 28px;
+    letter-spacing: 0.25em;
+    text-align: center;
+    padding: 18px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+
+  input[type="text"].error {
+    border-color: var(--accent);
+    animation: shake 0.3s ease;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  .error-msg {
+    font-size: 11px;
+    color: var(--accent);
+    text-align: center;
+    height: 16px;
+    margin-bottom: 20px;
+  }
+
+  .btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .btn:hover { background: #e03500; }
+  .btn:active { transform: scale(0.99); }
+
+  /* === 音声再生画面 === */
+  #player-screen {
+    display: none;
+  }
+
+  #player-screen .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  /* 波形アニメーション */
+  .waveform {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 60px;
+    margin-bottom: 28px;
+  }
+
+  .bar {
+    width: 4px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--accent), var(--accent2));
+    animation: wave 1.2s ease-in-out infinite;
+    transform-origin: bottom;
+  }
+
+  .bar:nth-child(1)  { height: 20px; animation-delay: 0s; }
+  .bar:nth-child(2)  { height: 35px; animation-delay: 0.1s; }
+  .bar:nth-child(3)  { height: 50px; animation-delay: 0.2s; }
+  .bar:nth-child(4)  { height: 40px; animation-delay: 0.3s; }
+  .bar:nth-child(5)  { height: 55px; animation-delay: 0.15s; }
+  .bar:nth-child(6)  { height: 30px; animation-delay: 0.25s; }
+  .bar:nth-child(7)  { height: 45px; animation-delay: 0.05s; }
+  .bar:nth-child(8)  { height: 25px; animation-delay: 0.35s; }
+  .bar:nth-child(9)  { height: 50px; animation-delay: 0.2s; }
+  .bar:nth-child(10) { height: 38px; animation-delay: 0.1s; }
+  .bar:nth-child(11) { height: 20px; animation-delay: 0.3s; }
+
+  @keyframes wave {
+    0%,100% { transform: scaleY(0.4); opacity: 0.5; }
+    50%      { transform: scaleY(1);   opacity: 1; }
+  }
+
+  .waveform.paused .bar {
+    animation-play-state: paused;
+    opacity: 0.3;
+  }
+
+  /* カスタム音声プレイヤー */
+  .player-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .play-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .play-btn:hover { background: #e03500; }
+  .play-btn:active { transform: scale(0.95); }
+
+  .play-btn svg { width: 20px; height: 20px; fill: #fff; }
+
+  .progress-wrap {
+    flex: 1;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 6px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+    pointer-events: none;
+  }
+
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  audio { display: none; }
+
+  /* ダウンロードリンク */
+  .dl-link {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    margin-top: 8px;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+
+  .dl-link:hover { color: var(--accent); }
+
+  /* フェードイン */
+  .fade-in {
+    animation: fadeIn 0.5s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="logo">叫び代行</div>
+
+  <!-- 合言葉入力 -->
+  <div class="card" id="auth-screen">
+    <h2>合言葉を入力</h2>
+    <p class="sub">DMで受け取った4文字を入力してください</p>
+
+    <div class="input-wrap">
+      <input type="text" id="code-input" maxlength="4" placeholder="アイウエ" autocomplete="off"
+        oninput="this.value = this.value.toUpperCase()"
+        onkeydown="if(event.key==='Enter') checkCode()">
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+
+    <button class="btn" onclick="checkCode()">聴く</button>
+  </div>
+
+  <!-- 音声プレイヤー -->
+  <div class="card fade-in" id="player-screen">
+    <p class="label">叫び代行ボイス</p>
+
+    <div class="waveform paused" id="waveform">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div>
+    </div>
+
+    <div class="player-controls">
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">
+        <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" onclick="seek(event)">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="time-row">
+          <span id="current-time">0:00</span>
+          <span id="duration">0:00</span>
+        </div>
+      </div>
+    </div>
+
+    <audio id="audio" src=""
+      ontimeupdate="updateProgress()"
+      onended="onEnded()"
+      onloadedmetadata="onMetadata()">
+    </audio>
+
+    <a class="dl-link" id="dl-link" href="" download>↓ ダウンロード</a>
+  </div>
+
+</div>
+
+<script>
+/*
+  ====================================================
+  設定: ここを書き換えて使います
+  ====================================================
+  CODES は { 合言葉: 音声ファイルのURL } の形式です。
+  音声ファイルはGoogleドライブの直リンクや
+  GitHub Pagesに置いたmp3などを指定してください。
+
+  例:
+  const CODES = {
+    "ヒモラス": "https://drive.google.com/uc?export=download&id=XXXX",
+    "カテウア": "https://your-site.github.io/voices/001.mp3",
+  };
+  ====================================================
+*/
+const CODES = {
+  // ここに合言葉と音声URLを追加していく
+  // "テスト": "https://example.com/sample.mp3",
+};
+
+function checkCode() {
+  const input = document.getElementById('code-input').value.trim();
+  const errorEl = document.getElementById('error-msg');
+  const inputEl = document.getElementById('code-input');
+
+  if (!input) {
+    errorEl.textContent = '合言葉を入力してください';
+    inputEl.classList.add('error');
+    setTimeout(() => inputEl.classList.remove('error'), 400);
+    return;
+  }
+
+  const url = CODES[input];
+
+  if (!url) {
+    errorEl.textContent = '合言葉が違います';
+    inputEl.classList.add('error');
+    setTimeout(() => inputEl.classList.remove('error'), 400);
+    return;
+  }
+
+  // 認証成功
+  errorEl.textContent = '';
+  const audio = document.getElementById('audio');
+  audio.src = url;
+  document.getElementById('dl-link').href = url;
+
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('player-screen').style.display = 'block';
+}
+
+// プレイヤー
+const audio = document.getElementById('audio');
+let isPlaying = false;
+
+function togglePlay() {
+  if (isPlaying) {
+    audio.pause();
+    isPlaying = false;
+    document.getElementById('play-icon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+    document.getElementById('waveform').classList.add('paused');
+  } else {
+    audio.play();
+    isPlaying = true;
+    document.getElementById('play-icon').innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+    document.getElementById('waveform').classList.remove('paused');
+  }
+}
+
+function onEnded() {
+  isPlaying = false;
+  document.getElementById('play-icon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+  document.getElementById('waveform').classList.add('paused');
+  document.getElementById('progress-fill').style.width = '0%';
+}
+
+function updateProgress() {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('current-time').textContent = fmt(audio.currentTime);
+}
+
+function onMetadata() {
+  document.getElementById('duration').textContent = fmt(audio.duration);
+}
+
+function seek(e) {
+  const bar = document.getElementById('progress-bar');
+  const rect = bar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = pct * audio.duration;
+}
+
+function fmt(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2, '0');
+  return `${m}:${sec}`;
+}
+</script>
+</body>
+</html>
